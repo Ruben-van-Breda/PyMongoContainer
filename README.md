@@ -5,3 +5,7 @@ A basic mongo container using docker and python
 ```
 docker-compose up
 ```
+or 
+```
+bash run.bat
+```
