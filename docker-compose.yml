@@ -1,0 +1,21 @@
+version: '3'
+services:
+  mongo:
+    image: mongo:latest
+    volumes:
+      - ./data/db:/data/db
+    ports:
+      - "27017:27017"
+
+  flask:
+    expose:
+      - 3000
+      - 5000
+    build: .
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mongo
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/mydb
+      - PORT=3000
