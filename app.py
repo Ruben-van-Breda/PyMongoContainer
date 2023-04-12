@@ -3,7 +3,7 @@ import os
 from flask import Flask, jsonify, request, render_template, redirect, url_for
 from pymongo import MongoClient
 from markupsafe import escape
-
+from bson import json_util
 
 app = Flask(__name__)
 app.config["MONGO_URI"] = "mongodb://mongo:27017/mydb" # Note that "mongo" is the name of the MongoDB container
@@ -22,30 +22,31 @@ def home():
 
 @app.route("/add", methods=["POST"])
 def add_data():
-    # get request arguments
-    name = request.args.get("name")
-    age = request.args.get("age")
-    # add unique id to data
+    data = {}
     id = collection.users.count_documents({}) + 1
 
-    print("data_to_add: ", name)
-    data = {}
-    data['id'] = id
-    data['name'] = name
-    data['age'] = age
-
+    for arg in request.args:
+        data[arg] = request.args.get(arg)
+        data['id'] = id    
+    
     collection.users.insert_one(data)
     return redirect('/view')
 
 @app.route("/view")
 def view():
-    print("Viewing users.")
     users = collection.users.find()
     output = []
     for user in users:
         print(user)
-        output.append({"id": user["id"], "name": user["name"], "age": user["age"]})
-    return jsonify({"users": output})
+        # Convert the query result to a JSON string
+        json_str = json_util.dumps(user)
+        # Convert the JSON string to a Python dictionary
+        json_obj = json.loads(json_str)
+        # drop field
+        json_obj.pop('_id')
+        output.append(json_obj)
+    
+    return jsonify({"users": output}), 200
 
 
 
@@ -54,8 +55,36 @@ def view_one(id : int):
     id = int(id)
     try:
         user = collection.users.find_one({"id": id})
-        user_json = {"id": user["id"], "name": user["name"], "age": user["age"]}
-        return jsonify(user_json), 200
+        json_obj = json.loads(json_util.dumps(user))
+        json_obj.pop('_id')
+        # user_json = {"id": user["id"], "name": user["name"], "age": user["age"]}
+        return jsonify(json_obj), 200
+    except Exception as e:
+        return jsonify({"error": "User not found. " + str(e) }), 404
+
+@app.route("/view/")
+def view_item():
+    # get request argument and argment value
+    query_params = request.args
+
+    # if no argument is passed, return all users
+    if not query_params:
+        return redirect('/view')
+    
+    # if argument is passed, return user with that argument
+    json_query = {}
+    for arg in query_params:        
+        json_query[arg] = query_params.get(arg)
+
+    try:
+        users = []
+        for user in collection.users.find(json_query):
+            json_obj = json.loads(json_util.dumps(user))
+            json_obj.pop('_id')
+            users.append(json_obj)
+            # user_json = {"id": user["id"], "name": user["name"], "age": user["age"]}
+        
+        return jsonify(users), 200
     except Exception as e:
         return jsonify({"error": "User not found. " + str(e) }), 404
 
