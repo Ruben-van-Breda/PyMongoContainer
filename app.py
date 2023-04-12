@@ -17,8 +17,25 @@ PORT = int(os.environ.get("PORT", 3000))
 
 @app.route("/")
 def home():
-    DropTable()
-    return "<h1>Hello World!</h1>"
+    html = '''
+    <h1>Home</h1>
+    <a href="/view">View Users</a>
+    <p>request: /view
+    request: /view/1<br>
+    request: /view/1/name<br>
+    request: /view?name=John<br>
+    </p>
+    <br>
+    <a href="/add">Add User</a>
+    <p>request: /add?name=John&age=20</p>
+    <br>
+    <a href="/update">Update User</a>
+    <br>
+    <a href="/delete">Delete User</a>
+    <br>
+    <a href="/droptable">Drop Table</a>
+    '''
+    return html
 
 @app.route("/add", methods=["POST"])
 def add_data():
@@ -114,7 +131,19 @@ def delete(id : int):
     except Exception as e:
         return jsonify({"error": "User not found. " + str(e) })
     
-    
+
+@app.route("/update/<int:id>/", methods=["POST"])
+def update(id : int):
+    try:
+        collection.users.update_one({"id": id}, {"$set": request.args})
+        return redirect('/view')
+    except Exception as e:
+        return jsonify({"error": "User not found. " + str(e) })
+
+@app.route("/droptable")
+def droptable():
+    DropTable()
+    return redirect('/view')
 
 
 
